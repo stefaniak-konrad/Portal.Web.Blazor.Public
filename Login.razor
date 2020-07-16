@@ -1,0 +1,148 @@
+﻿@*@page "/login"*@
+
+@using Serilog;
+@using System;
+@using System.Collections.Generic;
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Authentication.Cookies;
+@using Microsoft.AspNetCore.Authorization;
+@using System.Threading.Tasks;
+@using System.Security.Claims;
+@using EO.Serwis.Portal.Web.Blazor.Data
+@using EO.Serwis.Portal.ServiceLayer
+@using EO.Serwis.Portal.ServiceLayer.DTO
+@using Microsoft.AspNetCore.Components
+@inject PortalServiceClient Client
+@inject NavigationManager nav
+@using Microsoft.AspNetCore.Mvc;
+
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor httpContext
+
+<!doctype html>
+<html lang="pl-PL">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+</head>
+<body>
+
+    @*<div id="container" class="container-fluid">
+        <div class="row">
+            <div class="box login">
+                <div class="box-header">
+                    <div class="box-title">Logowanie</div>
+                </div>
+                <form>
+                    <input type="hidden" name="ReturnUrl" id="ReturnUrl" @bind-value="@model.ReturnUrl" />
+                    <div class="box-container">
+                        <div class="container new-section columns">
+                            <div asp-validation-summary="ModelOnly" class="row"></div>
+                            <div class="row">
+                                <div class="col-xl-12">
+                                    <label for="login">Login</label>
+                                    <input type="text" id="login" name="login" @bind-value="@model.Login" required />
+                                    <span asp-validation-for="Login" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xl-12">
+                                    <label for="password">Hasło</label>
+                                    <input type="password" asp-for="Password" id="password" name="password" @bind-value="@model.Password" required />
+                                    <span validation="Password" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="container new-section columns">
+                            <div class="row">
+                                <div class="col-xl-12">
+                                    <input type="submit" class="button blue" value="Zaloguj" @onclick="Zaloguj" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xl-12">
+                                    <a href="/InitChangePassword">Zmień hasło</a>
+                                </div>
+                            </div>
+                            <div class="row" id="StatusDiv">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>*@
+
+    <div>
+        <input type="text" @bind-value="model.Login" />
+        <input type="password" @bind-value="model.Password" />
+        <input type="submit" value="zaloguj" @onclick="Zaloguj" />
+    </div>
+
+</body>
+
+</html>
+
+
+
+
+@code{
+    LoginModel model = new LoginModel();
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+    public async Task Zaloguj()
+    {
+        if (model.Login != null && model.Password != null && model.Password != "")
+        {
+            model.ReturnUrl = nav.BaseUri;
+
+            try
+            {
+                Client.Client.Timeout = TimeSpan.FromMinutes(30);
+
+                UserDTO user;
+                user = Client.Login(model.Login.ToLower(), model.Password);
+
+                if (user == null)
+                {
+                    model.Error = "Logowanie nie powiodło się!";
+                }
+
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, string.Join(" ", user.Imie,user.Nazwisko)),
+                    new Claim(ClaimTypes.Email, model.Login.ToLower()),
+                    new Claim(ClaimTypes.Sid, user.Id.ToString()),
+                    new Claim(ClaimTypes.Role, "User")
+                };
+
+                var claimsIdentity = new ClaimsIdentity(
+                    claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(claimsIdentity);
+
+                var authProperties = new AuthenticationProperties
+                {
+                    ExpiresUtc = DateTime.UtcNow.AddMinutes(20),
+                    IsPersistent = false,
+                    AllowRefresh = false
+                };
+
+                await httpContext.HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    authProperties);
+
+                if (string.IsNullOrWhiteSpace(model.ReturnUrl))
+                {
+                    nav.NavigateTo("/Zgloszenia", true);
+                }
+                nav.NavigateTo(model.ReturnUrl + "zgloszenia", true);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex.ToString());
+            }
+        }
+
+    }
+}

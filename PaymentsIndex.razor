@@ -1,0 +1,542 @@
+﻿@page "/PaymentsIndex"
+
+@using Serilog;
+@using System;
+@using System.Collections.Generic;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Authentication.Cookies;
+@using System.Threading.Tasks;
+@using System.Security.Claims;
+@using EO.Serwis.Portal.Web.Blazor.Data
+@using EO.Serwis.Portal.ServiceLayer
+@using EO.Serwis.Portal.ServiceLayer.DTO
+@using Microsoft.AspNetCore.Components
+@inject PortalServiceClient Client
+@inject NavigationManager nav
+@using Microsoft.AspNetCore.Http
+@inject HttpContextAccessor httpContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Newtonsoft.Json;
+@using Microsoft.Extensions.Configuration;
+@inject IConfiguration Conf
+@using EO.Serwis.Portal.DataAccess.Contract.POCO
+@using Microsoft.AspNetCore.WebUtilities
+@using EO.Serwis.Portal.Web.Blazor.ViewComponents
+@using Syncfusion.EJ2.Blazor
+@using Syncfusion.EJ2.Blazor.Popups
+@using Syncfusion.EJ2.Blazor.Buttons
+
+<form>
+    <div id="container" class="container-fluid">
+        <div class="row">
+            <div class="col-xl-4 col-lg-5 box accordion">
+                <div class="box-header">
+                    <div class="box-title">Zgłoszenia</div>
+                    <div class="box-accordion-button"></div>
+                </div>
+                <div class="box-container">
+                    @if (model.CanEdit == false && model.Platnosc != null)
+                    {
+                        <div class="container new-section">
+                            <div class="box-data-title"><span>Płatność</span></div>
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Identyfikator płatności:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.Id)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Tytuł przelewu:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.P24Statement)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Identyfikator sesji:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.P24SessionId)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Opis transakcji:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.P24Description)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Kwota transakcji:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @model.Platnosc.P24Amount.Value.ToString().Insert(@model.Platnosc.P24Amount.Value.ToString().Length - 2, ",") zł
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Waluta:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.P24Currency)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Data i godzina transakcji:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.DataRejestracji)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Numer faktury zaliczkowej:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.NumerFakturyZal)
+                                </div>
+                            </div>
+
+                            <div class="row data">
+                                <div class="col-xl-5 col-lg-6 col-sm-5 label">Numer faktury końcowej:</div>
+                                <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                    @string.Join("", model.Platnosc.NumerFaktury)
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="container new-section">
+                        <div class="box-data-title"><span>Dane zgłoszenia</span></div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Identyfikator zgłoszenia:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.IdZgloszenia)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Data rejestracji:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.DataRejestracji)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Status wyceny:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.StatusWyceny)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container new-section">
+                        <div class="box-data-title"><span>Zgłaszający</span><a href="/AccountIndex?id=@model.IdZgloszenia"><span class="edit-button"></span></a></div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Nazwa:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join(" ", model.Name, model.Lastname)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Adres:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join(" ", model.Adres, model.PostCode, model.City)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Email:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.Email)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">NIP:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.NIP)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container new-section">
+                        <div class="box-data-title"><span>Naprawiany sprzęt</span></div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Producent:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.Producent)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Model:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.Model)
+                            </div>
+                        </div>
+                        <div class="row data">
+                            <div class="col-xl-5 col-lg-6 col-sm-5 label">Numer seryjny:</div>
+                            <div class="col-xl-7 col-lg-6 col-sm-7 value">
+                                @string.Join("", model.SerialNo)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container new-section">
+                        <div class="box-data-title"><span>Opis usterki</span></div>
+                        <div class="row data">
+                            <div class="col-xs-12 value">
+                                @string.Join("", model.OpisUsterki)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-xl-8 col-lg-7 box accordion">
+                <div class="box-header">
+                    <div class="box-title">Wycena naprawy</div>
+                    <div class="box-accordion-button"></div>
+                </div>
+                <div class="box-container">
+                    <div class="container new-section">
+                        <table class="table table-bordered evaluation-list">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Opis</th>
+                                    <th>Jedn.</th>
+                                    <th>Ilość</th>
+                                    <th>Cena</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var modele in pozycjeWyceny)
+                                {
+                                    <tr>
+                                        <td class="td-1">01</td>
+                                        <td class="td-2">
+                                            @(modele.Usluga ? "Usługa" : "Części")
+                                            @String.Join(" ", modele.NazwaProducenta@*, modele.Model, modele.SerialNo*@)
+                                        </td>
+                                        <td class="td-3">Szt.</td>
+                                        <td class="td-4">@modele.Liczba</td>
+                                        <td class="td-5">@modele.SumaBrutto.Value.ToString("C")</td>
+                                    </tr>
+                                }
+
+                                <tr>
+                                    <td class="table-summary-begin" colspan="2"></td>
+                                    <td class="table-summary-middle" colspan="2">Łączna kwota (w tym VAT)</td>
+                                    <td class="table-summary-end"><span><pre style="font-size:100%; color:#2d7ac2; font-family:open-sans_semibold">@model.Cena</pre></span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (model.CanEdit)
+                    {
+                        <div class="container new-section">
+                            <div class="widget">
+                                <fieldset>
+                                    <label name="AkceptacjaRegulaminuL" id="AkceptacjaRegulaminuL" class="ui-checkboxradio-label ui-corner-all ui-button ui-widget" for="AkceptacjaRegulaminu">
+                                        Oświadczam, że znam i akceptuje postanowienia <a data-toggle="modal" data-target="myModal">Regulaminu</a> Centrum Serwisowego oraz zapoznałem się z Polityką Prywatności (RODO)
+                                    </label>
+                                    <input type="checkbox" class="ui-checkboxradio-icon ui-corner-all ui-icon ui-icon-background ui-icon-blank" @bind-value="model.AkceptacjaRegulaminu" id="akceptacjaRegulaminu" name="akceptacjaRegulaminu" required />
+                                    <span class="glyphicon glyphicon-warning-sign hidden" id="agreementExclamation" title="Wymagana jest akceptacja regulaminu!"></span>
+                                    <label for="fv">
+                                        Faktura VAT
+                                    </label>
+                                    <input type="checkbox" class="ui-checkboxradio-icon ui-corner-all ui-icon ui-icon-background ui-icon-blank" @bind-value="model.FakturaVat" id="fv" />
+                                </fieldset>
+                            </div>
+                        </div>
+
+                        <div id="myModal" class="modal fade show" role="dialog">
+                            <div class="modal-dialog modal-lg">
+
+                                <!-- Modal content-->
+                                <div class="modal-content overflow-auto">
+                                    <div class="modal-header text-center">
+                                        <h4 class="modal-title">Regulamin serwisu</h4>
+                                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                    </div>
+                                    <div class="modal-body" style="overflow-y:scroll; height:510px">
+                                        @*@await Component.InvokeAsync("Regulamin")*@
+                                    </div>
+                                    <div class="modal-footer">
+                                        <a href="~/attachments/EO.Odstapienie.docx" download>
+                                            <b src="~/attachments/EO.Odstapienie.docx">Formularz odstąpienia od umowy</b>
+                                        </a>
+                                        <a href="~/attachments/WzorFormularza.docx" download>
+                                            <b src="~/attachments/WzorFormularza.docx">Wzór formularza</b>
+                                        </a>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Zamknij</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        @if (model.FakturaVat == true)
+                        {
+                            <div id="invoice-data" class="container new-section columns">
+                                <div class="row">
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaNazwa">Nazwa</label>
+                                        <input type="text" @bind-value="model.FakturaNazwa" id="fakturaNazwa" required />
+                                        <span class="hidden" style="color:red !important;">Nazwa jest wymagana do wystawienia faktury VAT</span>
+                                    </div>
+                                    <div class="col-md-6 col-sm-12 col-last">
+                                        <label for="FakturaNip">NIP</label>
+                                        <input type="text" @bind-value="model.FakturaNip" id="fakturaNip" maxlength="10" required @onclick="SprawdzanieNip" />
+                                        <span class="hidden" style="color:red !important;">Numer NIP jest wymagany do wystawienia faktury VAT</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaUlica">Ulica</label>
+                                        <input type="text" @bind-value="model.FakturaUlica" id=" fakturaUlica" required />
+                                        <span class="hidden" style="color:red !important;">Adres jest wymagany do wystawienia faktury VAT</span>
+                                    </div>
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaNrBudynku">Nr budynku</label>
+                                        <input type="text" @bind-value="model.FakturaNrBudynku" id="FakturaNumerBudynku" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaNrLokalu">Nr lokalu</label>
+                                        <input type="text" @bind-value="model.FakturaNrLokalu" id="NrLokalu" />
+                                    </div>
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaKodPocztowy">Kod pocztowy</label>
+                                        <input type="text" @bind-value="model.FakturaKodPocztowy" id="FvKodPocztowy" maxlength="6" />
+                                        <span class="hidden" style="color:red !important;">Kod pocztowy jest wymagany do wystawienia faktury VAT</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 col-sm-12 col">
+                                        <label for="FakturaMiasto">Miasto</label>
+                                        <input type="text" @bind-value="model.FakturaMiasto" id="vfMiasto" required />
+                                        <span class="hidden" style="color:red !important;">Miasto jest wymagane do wystawienia faktury VAT</span>
+                                    </div>
+                                    @if (model.FakturaVat == true && model.FakturaNip != "" && model.FakturaNazwa == "" && model.FakturaUlica == "")
+                                    {
+                                        <div class="col-xl-9 col-md-0 col-sm-0"></div>
+                                        <div id="gusTxt">Pobieranie danych z GUS</div>
+                                        <div id="gusWaiter" class="lds-spinner" style="margin-top:-20px"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        
+                        <hr />
+                        <div class="container new-section columns">
+                            <div class="row">
+                                <div class="col-xl-6 col-md-0 col-sm-0"></div>
+                                <div class="col-xl-3 col-md-6 col-sm-6 col-xs-12">
+                                    <div class="button red" id="cancelBtn" @onclick="RejectForm"><span class="icon"></span><span style="margin-left:35px; margin-top:4px">Rezygnuję</span></div>
+                                </div>
+                                <div class="col-xl-3 col-md-6 col-sm-6 col-xs-12">
+                                    <div class="button green" id="myBtn" @onclick="Register"><span class="icon"></span><span style="margin-left:35px; margin-top:4px">Zgadzam się</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+    PaymentsModel model = new PaymentsModel();
+    ZgloszeniaDTO dTO = new ZgloszeniaDTO();
+    public IList<PozycjaWycenyPOCO> pozycjeWyceny = new List<PozycjaWycenyPOCO>();
+    public RegulaminViewComponent Component;
+
+    EjsDialog DialogObj;
+    private void OnBtnClick()
+    {
+        this.DialogObj.Show();
+    }
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+    protected override void OnInitialized()
+    {
+        var uri = nav.ToAbsoluteUri(nav.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("id", out var Id))
+        {
+            model.UrlWyceny = Id.First();
+
+            try
+            {
+                //string[] url = nav.Uri.ToString().Split(new string[] { "id=" }, StringSplitOptions.None);
+                //var id = url.ElementAt(1);
+                var authState = AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var user = authState.Result.User;
+
+                Log.Information($"Payments for id={model.UrlWyceny}");
+                var userId = user.Claims.Single(p => p.Type == ClaimTypes.Sid).Value;
+                var payments = Client.GetWycena(model.UrlWyceny, userId);
+                Log.Debug($"Wycena found: {JsonConvert.SerializeObject(model)}");
+
+                //new PaymentsModel()
+                {
+                    model.UserId = userId;
+                    model.IdWyceny = payments.IdWyceny;
+                    model.Adres = payments.Ulica;
+                    model.Cena = payments.PozycjeWyceny == null ? payments.CenaBrutto.ToString("C") : payments.PozycjeWyceny.Sum(p => p.SumaBrutto).Value.ToString("C");
+                    model.City = payments.Miasto;
+                    model.Email = payments.Email;
+                    model.Lastname = payments.Nazwisko;
+                    model.IdZgloszenia = payments.IdZgloszenia;
+                    model.Model = payments.Model;
+                    model.Name = payments.Imie;
+                    model.NIP = payments.NIP;
+                    model.OpisUsterki = payments.Opis;
+                    model.PostCode = payments.Kod;
+                    model.Producent = payments.Producent;
+                    model.SerialNo = payments.NumerSeryjny;
+                    model.UrlWyceny = model.UrlWyceny;
+                    model.DataRejestracji = payments.DataRejestracji;
+                    model.Pracownik = payments.Pracownik;
+                    model.FakturaMiasto = payments.MiastoFirmy;
+                    model.FakturaNip = payments.NIP;
+                    model.FakturaUlica = payments.AdresFirmy;
+                    model.FakturaKodPocztowy = payments.KodPocztowyFirmy;
+                    model.FakturaNazwa = payments.NazwaFirmy;
+                    model.PozycjeWyceny = payments.PozycjeWyceny == null ? new List<PozycjaWycenyPOCO>() : model.PozycjeWyceny;
+                    model.CanEdit = payments.CanEdit;
+                    model.Platnosc = payments.Platnosc;
+                    model.FakturaVat = string.IsNullOrWhiteSpace(payments.NIP) == false;
+                    model.StatusWyceny = payments.StatusWyceny;
+                };
+
+                for (int a = 0; a < payments.PozycjeWyceny.Count; a++)
+                {
+                    var m = payments.PozycjeWyceny[a];
+                    pozycjeWyceny.Add(new PozycjaWycenyPOCO()
+                    {
+                        CenaJednostkowaNetto = m.CenaJednostkowaNetto,
+                        IdPozycjiWyceny = m.IdPozycjiWyceny,
+                        IdRezerwacjiKomponentu = m.IdRezerwacjiKomponentu,
+                        IdWyceny = m.IdWyceny,
+                        Liczba = m.Liczba,
+                        NazwaProducenta = m.NazwaProducenta,
+                        SumaNetto = m.SumaNetto,
+                        TypUslugiEnova = m.TypUslugiEnova,
+                        Usluga = m.Usluga
+
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex.ToString());
+                throw ex;
+            }
+        }
+    }
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+    public async Task RejectForm()
+    {
+        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.Result.User;
+
+        var userId = user.Claims.Single(p => p.Type == ClaimTypes.Sid).Value;
+        Client.RejectWycena(model.UrlWyceny, userId);
+        nav.NavigateTo("/Cancellation", true);
+    }
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+    public async Task Register()
+    {
+        if (model.AkceptacjaRegulaminu == true)
+        {
+            try
+            {
+                var baseP24Url = Conf.GetSection("UserSecrets")["P24_Url"];
+                Log.Debug($"Wycena posted: {JsonConvert.SerializeObject(model)}");
+                WycenaDTO oldModel = null;
+
+                RegulaminDTO regulamin = new RegulaminDTO();
+                regulamin = Client.GetRegulamin();
+
+                long idUzytkownikaPortalu = 0;
+                Int64.TryParse(model.UserId, out idUzytkownikaPortalu);
+
+                oldModel = Client.GetWycena(model.UrlWyceny, model.UserId);
+
+                dTO = Client.GetCustomerData(model.IdZgloszenia);
+
+                var token = Client.RegisterTransaction(new ServiceLayer.DTO.RegisterPaymentDTO()
+                {
+                    IdWyceny = model.IdWyceny,
+                    Adres = oldModel.Ulica,
+                    AkceptacjaCenyZaWycene = model.AkceptacjaCenyZaWycene,
+                    AkceptacjaRegulaminu = model.AkceptacjaRegulaminu,
+                    Cena = oldModel.CenaBrutto,
+                    City = oldModel.Miasto,
+                    Email = oldModel.Email,
+                    FakturaKodPocztowy = model.FakturaKodPocztowy,
+                    FakturaMiasto = model.FakturaMiasto,
+                    FakturaNazwa = model.FakturaNazwa,
+                    FakturaNip = model.FakturaNip,
+                    FakturaNrBudynku = model.FakturaNrBudynku,
+                    FakturaNrLokalu = model.FakturaNrLokalu,
+                    FakturaUlica = model.FakturaUlica,
+                    FakturaVat = model.FakturaVat,
+                    Lastname = oldModel.Nazwisko,
+                    FirstName = oldModel.Imie,
+                    Model = oldModel.Model,
+                    Name = oldModel.Imie,
+                    NIP = oldModel.NIP,
+                    OpisUsterki = oldModel.Opis,
+                    PostCode = oldModel.Kod,
+                    Producent = oldModel.Producent,
+                    SerialNo = oldModel.NumerSeryjny,
+                    KodCRC = regulamin.KodCRC,
+                    DataAkceptacji = DateTime.Now,
+                    IdRegulaminuSerwisu = regulamin.Id,
+                    IdUzytkownikaPortalu = idUzytkownikaPortalu,
+                    IdZgloszenia = model.IdZgloszenia
+                });
+                var url = $"{baseP24Url}/trnRequest/{token}";
+                Log.Debug($"Wygenerowany url do P24:{url}");
+                nav.NavigateTo(url, true);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex.ToString());
+            }
+        }
+
+    }
+
+
+    public async Task SprawdzanieNip()
+    {
+        if (model.FakturaNip != null)
+        {
+            try
+            {
+                Log.Information($"Weryfikacja NIPu: {model.FakturaNip}");
+                //pobieranie danych firmy
+                var getFirma = Client.VerifyNip(model.FakturaNip);
+                Log.Information($"Nip został zweryfikowany i potwierdzony");
+
+                bool validNip = true;
+                if (validNip)
+                {
+                    model.FakturaNazwa = getFirma.Nazwa;
+                    model.FakturaKodPocztowy = getFirma.Kod_Pocztowy;
+                    model.FakturaMiasto = getFirma.Miejscowosc;
+                    model.FakturaUlica = getFirma.Ulica;
+                    model.FakturaNrBudynku = getFirma.Numer_Budynku;
+                }
+                else
+                {
+                    Log.Information($"Nieprawidłowy nip");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex.ToString());
+                Log.Error($"Nip nie został odnaleziony w bazie GUS");
+            }
+        }
+    }
+}

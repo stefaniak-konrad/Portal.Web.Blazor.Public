@@ -1,0 +1,95 @@
+﻿@page "/Zgloszenia"
+
+@using Serilog;
+@using System;
+@using System.Collections.Generic;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Authentication.Cookies;
+@using System.Threading.Tasks;
+@using System.Security.Claims;
+@using EO.Serwis.Portal.Web.Blazor.Data
+@using EO.Serwis.Portal.ServiceLayer
+@using EO.Serwis.Portal.ServiceLayer.DTO
+@using Microsoft.AspNetCore.Components
+@inject PortalServiceClient Client
+@inject NavigationManager nav
+@using Microsoft.AspNetCore.Http
+@inject HttpContextAccessor httpContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.WebUtilities
+
+<div id="container" class="container-fluid">
+    <div class="row">
+        <div class="col-md-12 box accordion">
+            <div class="box-header">
+                <div class="box-title">Lista zgłoszeń</div>
+                @*<div class="box-accordion-button"></div>*@
+            </div>
+            <div class="box-container">
+                <div class="container new-section">
+                    <table class="table table-bordered application-list">
+                        <thead>
+                            <tr class="info">
+                                <th class="text-center" style="width:342px">ID Zgłoszenia</th>
+                                <th class="text-center" style="width:342px">ID Wyceny</th>
+                                <th class="text-center" style="width:594px">Opis</th>
+                                <th class="text-center" style="width:274px"></th>
+                                <th class="text-center" style="width:323px"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="panel-body">
+                            @foreach (var client in aaa)
+                            {
+                                <tr>
+                                    <td>@client.IdZgloszenia</td>
+                                    <td>@client.IdWyceny</td>
+                                    <td>@client.Opis</td>
+                                    <td><a href="/PaymentsIndex?id=@client.UrlWyceny">Szczegóły</a></td>
+                                    @*<td>@Html.ActionLink("Szczegóły", "Index", "Payments", new { id = client.UrlWyceny })</td>*@
+                                    <td><a href="/AccountIndex?id=@client.IdZgloszenia" asp-route-id="@client.IdZgloszenia">Zmień dane</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    @*<input type="button" class="btn btn-primary" value="Pobież zgłoszenia" style="float:right" @onclick="Index" />*@
+</div>
+
+
+@code {
+    public IList<WycenaListItemDTO> Model = new List<WycenaListItemDTO>();
+    public List<ZgloszeniaModel> aaa = new List<ZgloszeniaModel>();
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+
+    protected override void OnInitialized()
+    {
+        var uri = nav.ToAbsoluteUri(nav.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("id", out var Id))
+        {
+            //model.IdZgloszenia = Convert.ToInt32(Id.First());
+        }
+
+        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.Result.User;
+
+        IList<WycenaListItemDTO> model = Client.GetWyceny(long.Parse(user.Claims.SingleOrDefault(p => p.Type == ClaimTypes.Sid).Value));
+
+        for (int a = 0; a < model.Count; a++)
+        {
+            var m = model[a];
+            aaa.Add(new ZgloszeniaModel()
+            {
+                IdZgloszenia = m.IdZgloszenia,
+                IdWyceny = m.IdWyceny,
+                Opis = m.Opis,
+                UrlWyceny = m.UrlWyceny,
+
+            });
+        }
+    }
+}
